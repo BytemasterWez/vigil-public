@@ -2,6 +2,9 @@
 
 Vigil is a governance layer for tool and model actions.
 
+Live one-pager:
+- https://bytemasterwez.github.io/vigil-public/
+
 This public repo is the safe, shareable surface:
 - what Vigil does
 - the current private beta position
