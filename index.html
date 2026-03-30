@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vigil — Deterministic Trace Layer for AI Tool Calls</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Serif+Display:ital@0;1&display=swap');
+
+:root {
+  --ink: #0f0f0d;
+  --ink2: #2a2a26;
+  --ink3: #5a5a52;
+  --ink4: #9a9a8e;
+  --paper: #f5f3ee;
+  --paper2: #edeae2;
+  --paper3: #e2dfd5;
+  --rule: #d4d0c4;
+  --accent: #c8441a;
+  --accent2: #e8622e;
+  --accent-dim: #c8441a18;
+  --green: #1a6e3c;
+  --green-dim: #1a6e3c14;
+  --mono: 'DM Mono', monospace;
+  --serif: 'DM Serif Display', serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 64px 40px 80px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header rule */
+.top-rule {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 56px;
+  opacity: 0;
+  animation: fadeup 0.6s ease forwards;
+}
+
+.top-rule-line {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.top-rule-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ink4);
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+/* Hero */
+.hero {
+  margin-bottom: 56px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.1s forwards;
+}
+
+.kicker {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kicker::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 1px;
+  background: var(--accent);
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(36px, 6vw, 58px);
+  line-height: 1.05;
+  color: var(--ink);
+  margin-bottom: 24px;
+  font-weight: 400;
+}
+
+h1 em {
+  font-style: italic;
+  color: var(--ink3);
+}
+
+.lede {
+  font-size: 15px;
+  color: var(--ink2);
+  line-height: 1.7;
+  max-width: 580px;
+  font-weight: 300;
+  border-left: 2px solid var(--accent);
+  padding-left: 20px;
+}
+
+/* The problem */
+.problem {
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  padding: 28px 32px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.2s forwards;
+}
+
+.problem-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 14px;
+}
+
+.problem-text {
+  font-size: 14px;
+  color: var(--ink2);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.problem-text strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* What vigil does */
+.section {
+  margin-bottom: 48px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.3s forwards;
+}
+
+.section-head {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Three steps */
+.steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.35s forwards;
+}
+
+.step {
+  background: var(--paper);
+  padding: 24px 20px;
+  position: relative;
+}
+
+.step-num {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--ink4);
+  margin-bottom: 10px;
+  font-family: var(--mono);
+}
+
+.step-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* Code block */
+.code-block {
+  background: var(--ink);
+  padding: 24px 28px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.4s forwards;
+  overflow-x: auto;
+}
+
+.code-block-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 14px;
+  font-family: var(--mono);
+}
+
+.code-block pre {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: #c8c4b8;
+  white-space: pre;
+}
+
+.code-block .c-dim { color: #5a5a52; }
+.code-block .c-key { color: #8fb0a0; }
+.code-block .c-str { color: #c8a882; }
+.code-block .c-acc { color: #e8784e; }
+.code-block .c-grn { color: #7ab88a; }
+
+/* What you get back */
+.response-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.45s forwards;
+}
+
+.response-item {
+  border: 1px solid var(--rule);
+  padding: 18px 20px;
+  background: var(--paper);
+}
+
+.response-item-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.response-item-desc {
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* Honest section */
+.honest {
+  background: var(--paper2);
+  border-top: 2px solid var(--ink);
+  padding: 24px 28px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.5s forwards;
+}
+
+.honest-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink4);
+  margin-bottom: 14px;
+}
+
+.honest-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.honest-col-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.honest-col-label.yes { color: var(--green); }
+.honest-col-label.no { color: var(--ink3); }
+
+.honest-item {
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.7;
+  padding-left: 14px;
+  position: relative;
+  font-weight: 300;
+}
+
+.honest-item::before {
+  position: absolute;
+  left: 0;
+  font-size: 10px;
+}
+
+.honest-item.yes::before { content: '✓'; color: var(--green); }
+.honest-item.no::before { content: '—'; color: var(--rule); }
+
+/* Beta CTA */
+.cta {
+  border: 1px solid var(--ink);
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.55s forwards;
+}
+
+.cta-left {}
+
+.cta-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.cta-desc {
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.cta-limits {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.cta-limit {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink4);
+  background: var(--paper2);
+  padding: 3px 10px;
+  border: 1px solid var(--rule);
+}
+
+.cta-right {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cta-action {
+  display: block;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.cta-action:hover { background: var(--accent); }
+
+.cta-sub {
+  font-size: 10px;
+  color: var(--ink4);
+  margin-top: 8px;
+}
+
+/* Footer */
+.footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: 0;
+  animation: fadeup 0.6s ease 0.6s forwards;
+}
+
+.footer-mark {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--ink3);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.footer-note {
+  font-size: 10px;
+  color: var(--ink4);
+}
+
+/* Animations */
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .wrap { padding: 40px 24px 60px; }
+  .steps { grid-template-columns: 1fr; }
+  .response-grid { grid-template-columns: 1fr; }
+  .honest-grid { grid-template-columns: 1fr; }
+  .cta { grid-template-columns: 1fr; }
+  .cta-right { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Top rule -->
+  <div class="top-rule">
+    <div class="top-rule-line"></div>
+    <div class="top-rule-label">Private beta · March 2026</div>
+    <div class="top-rule-line"></div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="kicker">Vigil</div>
+    <h1>Your agent calls tools.<br><em>You should know what it proposed.</em></h1>
+    <p class="lede">
+      Vigil is a deterministic trace layer for probabilistic tool-use behaviour.
+      Every tool proposal your agent makes gets normalized into a structured,
+      auditable record — before anything executes.
+    </p>
+  </div>
+
+  <!-- Problem -->
+  <div class="problem">
+    <div class="problem-label">The problem</div>
+    <p class="problem-text">
+      When an agent calls a tool, you get a log entry. Useful for debugging one thing.
+      But if you want to understand what your agent is doing across many calls —
+      <strong>what it consistently proposes, what it gets wrong, what a regulator would see</strong>
+      — a log entry is not enough. The raw output is messy, inconsistent, and hard to compare.
+    </p>
+  </div>
+
+  <!-- What vigil does -->
+  <div class="section">
+    <div class="section-head">What Vigil does</div>
+  </div>
+
+  <!-- Three steps -->
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01 —</div>
+      <div class="step-title">normalize</div>
+      <div class="step-desc">Messy tool proposal goes in. A deterministic structured record comes out. Stable anchor fields. Comparable across calls.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02 —</div>
+      <div class="step-title">review</div>
+      <div class="step-desc">Judge the record with no side effects. Get a governed verdict back. Nothing executes. Everything is auditable.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03 —</div>
+      <div class="step-title">store</div>
+      <div class="step-desc">Every call is stored. Raw payload preserved. Normalized layer on top. Review results attached when present. The full chain is yours to keep.</div>
+    </div>
+  </div>
+
+  <!-- Code example -->
+<div class="code-block">
+    <div class="code-block-label">Quickstart — normalize a tool proposal</div>
+    <pre><span class="c-dim">curl -X POST https://your-endpoint/gateway/v0/normalize \</span>
+<span class="c-dim">  -H </span><span class="c-str">"X-Vigil-Api-Key: &lt;your-beta-key&gt;"</span><span class="c-dim"> \</span>
+<span class="c-dim">  -H </span><span class="c-str">"Content-Type: application/json"</span><span class="c-dim"> \</span>
+<span class="c-dim">  -d </span><span class="c-str">'{'</span>
+<span class="c-dim">    </span><span class="c-key">"actor_id"</span><span class="c-dim">:     </span><span class="c-str">"agent:my-agent"</span><span class="c-dim">,</span>
+<span class="c-dim">    </span><span class="c-key">"principal_id"</span><span class="c-dim">: </span><span class="c-str">"usr:developer"</span><span class="c-dim">,</span>
+<span class="c-dim">    </span><span class="c-key">"source_ref"</span><span class="c-dim">:   </span><span class="c-str">"session:abc123"</span><span class="c-dim">,</span>
+<span class="c-dim">    </span><span class="c-key">"proposal"</span><span class="c-dim">: {</span>
+<span class="c-dim">      </span><span class="c-key">"action_type"</span><span class="c-dim">:  </span><span class="c-str">"task.transition"</span><span class="c-dim">,</span>
+<span class="c-dim">      </span><span class="c-key">"connector_id"</span><span class="c-dim">: </span><span class="c-str">"task-state-v1"</span><span class="c-dim">,</span>
+<span class="c-dim">      </span><span class="c-key">"payload"</span><span class="c-dim">: {</span>
+<span class="c-dim">        </span><span class="c-key">"task_id"</span><span class="c-dim">:    </span><span class="c-str">"T-42"</span><span class="c-dim">,</span>
+<span class="c-dim">        </span><span class="c-key">"from_state"</span><span class="c-dim">: </span><span class="c-str">"pending"</span><span class="c-dim">,</span>
+<span class="c-dim">        </span><span class="c-key">"to_state"</span><span class="c-dim">:   </span><span class="c-str">"in_review"</span>
+<span class="c-dim">      }</span>
+<span class="c-dim">    }</span>
+<span class="c-dim">  }'</span>
+
+<span class="c-dim"># returns →</span>
+<span class="c-grn">{</span>
+<span class="c-dim">  </span><span class="c-key">"request_id"</span><span class="c-dim">:   </span><span class="c-str">"req:abc..."</span><span class="c-dim">,</span>
+<span class="c-dim">  </span><span class="c-key">"record_id"</span><span class="c-dim">:    </span><span class="c-str">"rec:abc..."</span><span class="c-dim">,</span>
+<span class="c-dim">  </span><span class="c-key">"run_id"</span><span class="c-dim">:       </span><span class="c-str">"run:xyz..."</span><span class="c-dim">,</span>
+<span class="c-dim">  </span><span class="c-key">"normalized_record"</span><span class="c-dim">: {...},</span>
+<span class="c-dim">  </span><span class="c-key">"action_envelope"</span><span class="c-dim">: {...},</span>
+<span class="c-dim">  </span><span class="c-key">"mode"</span><span class="c-dim">:         </span><span class="c-str">"record_only"</span>
+<span class="c-grn">}</span></pre>
+  </div>
+
+  <!-- What you get back -->
+  <div class="section">
+    <div class="section-head">What comes back</div>
+  </div>
+  <div class="response-grid">
+    <div class="response-item">
+      <div class="response-item-label">normalized record</div>
+      <div class="response-item-desc">Stable anchor fields extracted from the messy proposal. The same action class always looks the same. Comparable across thousands of calls.</div>
+    </div>
+    <div class="response-item">
+      <div class="response-item-label">governed verdict</div>
+      <div class="response-item-desc">Returned by review, not normalize. A governed outcome and verdict with reasons attached, with no side effects.</div>
+    </div>
+    <div class="response-item">
+      <div class="response-item-label">raw payload preserved</div>
+      <div class="response-item-desc">The original proposal is stored alongside the normalized form. Nothing is thrown away. The audit trail is complete.</div>
+    </div>
+    <div class="response-item">
+      <div class="response-item-label">record_id chain</div>
+      <div class="response-item-desc">Request, record, run, outcome, and verdict stay linked in one audit chain. The normalized record becomes the stable reference point.</div>
+    </div>
+  </div>
+
+  <!-- Honest section -->
+  <div class="honest">
+    <div class="honest-label">Honest about what this is and is not</div>
+    <div class="honest-grid">
+      <div>
+        <div class="honest-col-label yes">v1 does this</div>
+        <div class="honest-item yes">normalize tool proposals into deterministic records</div>
+        <div class="honest-item yes">review with no side effects</div>
+        <div class="honest-item yes">store the full audit chain</div>
+        <div class="honest-item yes">return governed outcomes and verdicts on review</div>
+        <div class="honest-item yes">preserve raw payload alongside normalized form</div>
+        <div class="honest-item yes">fit the current tool-proposal request shape cleanly</div>
+      </div>
+      <div>
+        <div class="honest-col-label no">not in v1</div>
+        <div class="honest-item no">execute is intentionally disabled</div>
+        <div class="honest-item no">not a broad governance platform yet</div>
+        <div class="honest-item no">not production-scale proven</div>
+        <div class="honest-item no">not a replacement for your existing logging</div>
+        <div class="honest-item no">no UI — API only</div>
+        <div class="honest-item no">no self-serve signup yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-left">
+      <div class="cta-title">Private beta — 3 to 5 people</div>
+      <div class="cta-desc">
+        Looking for developers actively building with MCP or LLM tool-use who want
+        structured traces and are willing to tell me what's wrong with it.
+        DM me for a key. Manual issuance, real feedback expected.
+      </div>
+      <div class="cta-limits">
+        <span class="cta-limit">50 req / day</span>
+        <span class="cta-limit">normalize + review only</span>
+        <span class="cta-limit">full audit trail</span>
+        <span class="cta-limit">free for 30 days</span>
+      </div>
+      <div class="cta-limits" style="margin-top:10px">
+        <span class="cta-limit">Discord: Wez Desbar</span>
+      </div>
+    </div>
+    <div class="cta-right">
+      <button class="cta-action" onclick="navigator.clipboard.writeText('Interested in Vigil beta — building agents with MCP tool-use').then(()=>this.textContent='copied').catch(()=>this.textContent='DM me')">
+        request a key
+      </button>
+      <div class="cta-sub">Manual beta · direct founder support</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-mark">Vigil · v0.1 beta</div>
+    <div class="footer-note">deterministic trace layer for probabilistic tool-use behaviour</div>
+  </div>
+
+</div>
+</body>
+</html>
